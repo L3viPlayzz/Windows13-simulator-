@@ -94,6 +94,52 @@ npm start
 
 The app will be available at: `http://localhost:5000`
 
+## Deploy to Render.com (Recommended)
+
+Render is one of the easiest ways to deploy this app. Here's how:
+
+### Option A: One-Click Deploy with Blueprint
+
+1. Push your code to a GitHub repository
+2. Go to [Render Dashboard](https://dashboard.render.com)
+3. Click "New" → "Blueprint"
+4. Connect your GitHub repo
+5. Render will automatically detect the `render.yaml` file and set up:
+   - A Node.js web service
+   - A PostgreSQL database
+   - All required environment variables
+
+### Option B: Manual Setup
+
+1. **Create a PostgreSQL Database:**
+   - Go to Render Dashboard → "New" → "PostgreSQL"
+   - Choose a name and plan (free tier available)
+   - Copy the "External Database URL"
+
+2. **Create a Web Service:**
+   - Go to "New" → "Web Service"
+   - Connect your GitHub repository
+   - Configure:
+     - **Build Command:** `npm install && npm run build`
+     - **Start Command:** `node dist/index.cjs`
+     - **Environment:** Node
+
+3. **Add Environment Variables:**
+   - `NODE_ENV` = `production`
+   - `DATABASE_URL` = (paste your PostgreSQL connection string)
+   - `SESSION_SECRET` = (generate a random string)
+
+4. **Deploy!** Render will automatically build and deploy your app.
+
+### After Deployment
+
+Run database migrations by opening Render's Shell and running:
+```bash
+npm run db:push
+```
+
+---
+
 ## Production Deployment
 
 To deploy to a production server (like AWS EC2, DigitalOcean, Heroku, etc.):
@@ -160,9 +206,10 @@ pm2 logs windows13
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `DATABASE_URL` | Yes | - | PostgreSQL connection string |
+| `DATABASE_URL` | No | - | PostgreSQL connection string (optional - app works without it, but settings won't persist) |
 | `PORT` | No | 5000 | Port to run the server on |
 | `NODE_ENV` | No | development | `production` or `development` |
+| `SESSION_SECRET` | No | - | Secret for session encryption (recommended for production) |
 
 ## Development vs Production
 

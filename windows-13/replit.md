@@ -117,12 +117,21 @@ Each browser session gets a unique ID stored in localStorage. This ID links to t
 
 ## Deployment
 
-### Configuration
+### Replit Deployment
 Deployment is configured with:
 - **Type**: Autoscale (stateless, scales with traffic)
 - **Build**: `npm run build`
 - **Start**: `npm start`
 - **Port**: 5000 (automatically exposed)
+
+### Render.com Deployment
+The project includes a `render.yaml` Blueprint for one-click deployment to Render:
+- Node.js web service with PostgreSQL database
+- Auto-configured environment variables
+- Build command: `npm install && npm run build`
+- Start command: `node dist/index.cjs`
+
+See `DEPLOYMENT.md` for detailed instructions.
 
 ### Production Build
 The build process:
@@ -151,6 +160,12 @@ The build process:
 - Configured for Replit proxy and domain handling
 
 ## Recent Changes
+- **Dec 13, 2025**: Render.com deployment support
+  - Added `render.yaml` Blueprint for one-click Render deployment
+  - Made database optional - app works without PostgreSQL (settings stored locally)
+  - Fixed taskbar z-index so open app windows appear in front of taskbar
+  - Updated DEPLOYMENT.md with Render-specific instructions
+
 - **Dec 8, 2025**: Major Power Monitor upgrade and PWA improvements
   - Completely rebuilt PowerMonitor.tsx with professional system monitoring:
     - Overview tab: CPU, RAM, GPU, Network at a glance with live animated graphs

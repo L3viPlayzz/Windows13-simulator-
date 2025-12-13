@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { enrollFace, verifyFace, isEnrolled, clearEnrolledFace } from "./faceVerification";
-import { db } from "./db";
+import { db, isDatabaseAvailable } from "./db";
 import { userSettings, customWallpapers } from "@shared/schema";
 import { eq } from "drizzle-orm";
 
@@ -82,6 +82,10 @@ export async function registerRoutes(
 
   app.get("/api/settings/:sessionId", async (req, res) => {
     try {
+      if (!isDatabaseAvailable() || !db) {
+        return res.json({ settings: null });
+      }
+      
       const { sessionId } = req.params;
       
       const [settings] = await db
@@ -102,6 +106,10 @@ export async function registerRoutes(
 
   app.post("/api/settings/:sessionId", async (req, res) => {
     try {
+      if (!isDatabaseAvailable() || !db) {
+        return res.json({ success: true, message: "Database not available, settings stored locally" });
+      }
+      
       const { sessionId } = req.params;
       const { settings } = req.body;
       
@@ -152,6 +160,10 @@ export async function registerRoutes(
 
   app.get("/api/wallpapers/:sessionId", async (req, res) => {
     try {
+      if (!isDatabaseAvailable() || !db) {
+        return res.json({ wallpapers: [] });
+      }
+      
       const { sessionId } = req.params;
       
       const wallpapers = await db
@@ -168,6 +180,10 @@ export async function registerRoutes(
 
   app.post("/api/wallpapers/:sessionId", async (req, res) => {
     try {
+      if (!isDatabaseAvailable() || !db) {
+        return res.json({ success: false, error: "Database not available" });
+      }
+      
       const { sessionId } = req.params;
       const { name, imageData } = req.body;
       
@@ -189,6 +205,10 @@ export async function registerRoutes(
 
   app.delete("/api/wallpapers/:sessionId/:wallpaperId", async (req, res) => {
     try {
+      if (!isDatabaseAvailable() || !db) {
+        return res.json({ success: false, error: "Database not available" });
+      }
+      
       const { wallpaperId } = req.params;
       
       await db
