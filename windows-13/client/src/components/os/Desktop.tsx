@@ -550,6 +550,7 @@ export function Desktop() {
         onQuickSettingsClick={() => setQuickSettingsOpen(!quickSettingsOpen)}
         onTimeClick={() => { setNotificationCenterOpen(!notificationCenterOpen); setQuickSettingsOpen(false); }}
         onChevronClick={() => { setAppLauncherOpen(!appLauncherOpen); setQuickSettingsOpen(false); }}
+        hasActiveWindow={windows.some(w => w.isOpen && !w.isMinimised)}
       />
 
       <PWAInstallPrompt />

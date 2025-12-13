@@ -17,9 +17,10 @@ interface TaskbarProps {
   onQuickSettingsClick: () => void;
   onTimeClick?: () => void;
   onChevronClick?: () => void;
+  hasActiveWindow?: boolean;
 }
 
-export function Taskbar({ toggleStart, isStartOpen, openWindows, activeWindowId, pinnedApps = [], onWindowClick, onQuickSettingsClick, onTimeClick, onChevronClick }: TaskbarProps) {
+export function Taskbar({ toggleStart, isStartOpen, openWindows, activeWindowId, pinnedApps = [], onWindowClick, onQuickSettingsClick, onTimeClick, onChevronClick, hasActiveWindow = false }: TaskbarProps) {
   const [time, setTime] = useState(new Date());
   const [batteryLevel, setBatteryLevel] = useState<number | null>(null);
   const [isCharging, setIsCharging] = useState(false);
@@ -100,7 +101,7 @@ export function Taskbar({ toggleStart, isStartOpen, openWindows, activeWindowId,
   };
 
   return (
-    <div className="fixed bottom-4 left-4 right-4 h-14 flex justify-center z-[9999] pointer-events-none">
+    <div className={`fixed bottom-4 left-4 right-4 h-14 flex justify-center pointer-events-none ${hasActiveWindow ? 'z-10' : 'z-[9999]'}`}>
       {/* Dock Container - Enable pointer events for children */}
       <div className="pointer-events-auto relative flex items-center h-full bg-white/60 dark:bg-[#1a1a1a]/60 backdrop-blur-2xl border border-white/20 dark:border-white/10 rounded-2xl shadow-2xl px-2 gap-2">
         
