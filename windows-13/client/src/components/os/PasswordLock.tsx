@@ -7,7 +7,7 @@ interface PasswordLockProps {
   onUnlock: () => void;
 }
 
-// Hier zet je de hash van je wachtwoord (bijvoorbeeld "Levi20111028!")
+// Plaats hier de hash van je wachtwoord (gemaakt met bcrypt)
 const HASHED_PASSWORD = '$2a$10$5vYZ5vYZ5vYZ5vYZ5vYZ5vYZ5vYZ5vYZ5vYZ5vY';
 
 export function PasswordLock({ onUnlock }: PasswordLockProps) {
@@ -27,14 +27,19 @@ export function PasswordLock({ onUnlock }: PasswordLockProps) {
         setPassword('');
         setTimeout(() => setError(false), 1000);
       }
-    } catch (e) {
-      console.error('Error checking password:', e);
+    } catch (err) {
+      console.error('Error verifying password:', err);
+      setError(true);
+      setPassword('');
+      setTimeout(() => setError(false), 1000);
     }
   };
 
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
-      if (e.key === 'Enter') handleSubmit();
+      if (e.key === 'Enter') {
+        handleSubmit();
+      }
     };
 
     window.addEventListener('keydown', handleKeyPress);
@@ -54,9 +59,30 @@ export function PasswordLock({ onUnlock }: PasswordLockProps) {
 
   return (
     <div className="h-screen w-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center z-[10000] overflow-hidden">
-      <motion.div className="relative z-10 flex flex-col items-center gap-8 bg-gradient-to-br from-blue-500/20 to-cyan-500/20 backdrop-blur-sm rounded-3xl p-8 border-2 border-blue-400/50 shadow-2xl">
-        <h1 className="text-4xl font-bold text-white mb-2 font-display">Windows 13</h1>
-        <p className="text-blue-300 text-sm">Enter your password to continue</p>
+      {/* Password UI */}
+      <motion.div
+        initial={{ scale: 0.8, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ type: 'spring', damping: 15 }}
+        className="relative z-10 flex flex-col items-center gap-8 bg-gradient-to-br from-blue-500/20 to-cyan-500/20 backdrop-blur-sm rounded-3xl p-8 border-2 border-blue-400/50 shadow-2xl"
+      >
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
+          className="w-20 h-20 bg-gradient-to-br from-blue-400 to-green-600 rounded-2xl flex items-center justify-center shadow-2xl"
+        >
+          <div className="w-16 h-16 grid grid-cols-2 gap-1">
+            <div className="bg-blue-300 rounded-sm" />
+            <div className="bg-blue-300 rounded-sm" />
+            <div className="bg-blue-300 rounded-sm" />
+            <div className="bg-blue-300 rounded-sm" />
+          </div>
+        </motion.div>
+
+        <div className="text-center">
+          <h1 className="text-4xl font-bold text-white mb-2 font-display">Windows 13</h1>
+          <p className="text-blue-300 text-sm">Enter your password to continue</p>
+        </div>
 
         <div className="w-80 relative">
           <input
@@ -86,7 +112,16 @@ export function PasswordLock({ onUnlock }: PasswordLockProps) {
           Sign In
         </button>
 
-        {error && <p className="text-red-400 text-sm mt-2">Incorrect password</p>}
+        {error && (
+          <motion.p
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            className="text-red-400 text-sm"
+          >
+            Incorrect password
+          </motion.p>
+        )}
       </motion.div>
     </div>
   );
