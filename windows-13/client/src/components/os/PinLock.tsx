@@ -27,14 +27,18 @@ export function PinLock({ onUnlock }: PinLockProps) {
   };
 
   const handleSubmit = async () => {
-    const match = await bcrypt.compare(pin, HASHED_PIN);
-    if (match) {
-      setLocked(false);
-      setTimeout(() => onUnlock(), 600);
-    } else {
-      setError(true);
-      setPin('');
-      setTimeout(() => setError(false), 1000);
+    try {
+      const match = await bcrypt.compare(pin, HASHED_PIN);
+      if (match) {
+        setLocked(false);
+        setTimeout(() => onUnlock(), 600);
+      } else {
+        setError(true);
+        setPin('');
+        setTimeout(() => setError(false), 1000);
+      }
+    } catch (e) {
+      console.error('Error checking PIN:', e);
     }
   };
 
@@ -51,9 +55,7 @@ export function PinLock({ onUnlock }: PinLockProps) {
       } else if (e.key === 'Backspace') {
         handleBackspace();
       } else if (e.key === 'Enter') {
-        if (pin.length === 6) {
-          handleSubmit();
-        }
+        if (pin.length === 6) handleSubmit();
       }
     };
 
@@ -74,8 +76,58 @@ export function PinLock({ onUnlock }: PinLockProps) {
 
   return (
     <div className="h-screen w-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center z-[10000] overflow-hidden">
-      {/* Rest van je UI blijft hetzelfde */}
-      {/* PIN Display, Keypad, Error message */}
+      <motion.div className="relative z-10 flex flex-col items-center gap-8 bg-gradient-to-br from-purple-500/20 to-pink-500/20 backdrop-blur-sm rounded-3xl p-8 border-2 border-purple-400/50 shadow-2xl">
+        <h1 className="text-4xl font-bold text-white mb-2">Enter PIN</h1>
+
+        {/* PIN Display */}
+        <div className="flex gap-2">
+          {[0, 1, 2, 3, 4, 5].map((i) => (
+            <motion.div
+              key={i}
+              animate={{
+                scale: error ? [1, 1.1, 1] : 1,
+                backgroundColor: error
+                  ? '#ef4444'
+                  : i < pin.length
+                  ? '#3b82f6'
+                  : '#27272a',
+              }}
+              transition={{ duration: error ? 0.3 : 0.2 }}
+              className="w-12 h-12 rounded-lg border-2 border-white/10 flex items-center justify-center"
+            >
+              {pin.length > i && <div className="w-3 h-3 bg-white rounded-full" />}
+            </motion.div>
+          ))}
+        </div>
+
+        {/* Keypad */}
+        <div className="grid grid-cols-3 gap-3 mt-4">
+          {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
+            <button
+              key={num}
+              onClick={() => handleDigit(num.toString())}
+              className="w-14 h-14 bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg text-white font-semibold transition-all hover:scale-105 active:scale-95 text-lg"
+            >
+              {num}
+            </button>
+          ))}
+          <button
+            onClick={handleBackspace}
+            className="w-14 h-14 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 rounded-lg text-red-300 flex items-center justify-center"
+          >
+            <Delete className="w-5 h-5" />
+          </button>
+          <button
+            onClick={() => handleDigit('0')}
+            className="w-14 h-14 bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg text-white font-semibold transition-all hover:scale-105 active:scale-95 text-lg"
+          >
+            0
+          </button>
+          <div className="w-14 h-14" />
+        </div>
+
+        {error && <p className="text-red-400 text-sm mt-2">Incorrect PIN</p>}
+      </motion.div>
     </div>
   );
 }
