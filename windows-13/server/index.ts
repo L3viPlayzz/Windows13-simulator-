@@ -2,12 +2,12 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
-import { Pool } from "pg"; // ← Postgres import
+import { Pool } from "pg";
+import bcrypt from "bcrypt"; // als je nog niet hebt, npm i bcrypt
 
 const app = express();
 const httpServer = createServer(app);
 
-// Maak een Postgres pool aan
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
 declare module "http" {
@@ -57,7 +57,6 @@ app.use((req, res, next) => {
       if (capturedJsonResponse) {
         logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
       }
-
       log(logLine);
     }
   });
@@ -65,27 +64,49 @@ app.use((req, res, next) => {
   next();
 });
 
-// --- Guest login route ---
-app.post('/api/guest-login', async (req, res) => {
-  try {
-    const guestId = `guest_${Date.now()}`;
-    const guestPin = Math.floor(1000 + Math.random() * 9000).toString();
+// --- Vaste gebruiker + gastaccounts ---
+const OWNER_USERNAME = "levi"; // jouw account
+const OWNER_PIN = "110911";    // jouw PIN
+const OWNER_PASSWORD = "Levi20111028!"; // jouw password (optioneel)
 
-    await pool.query(
-      'INSERT INTO users (username, pin) VALUES ($1, $2)',
-      [guestId, guestPin]
-    );
+app.post("/api/login", async (req, res) => {
+  const { username, password, pin } = req.body;
 
-    res.json({
-      success: true,
-      username: guestId,
-      pin: guestPin,
-      isGuest: true
-    });
-  } catch (err) {
-    console.error("Guest login error:", err);
-    res.status(500).json({ success: false, message: "Could not create guest" });
+  if (username === OWNER_USERNAME) {
+    // Jij logt normaal in
+    const result = await pool.query("SELECT * FROM users WHERE username = $1", [username]);
+    let user = result.rows[0];
+
+    if (!user) {
+      // Maak je account automatisch aan bij eerste keer
+      const hashedPassword = await bcrypt.hash(OWNER_PASSWORD, 10);
+      const hashedPin = await bcrypt.hash(OWNER_PIN, 10);
+
+      await pool.query(
+        "INSERT INTO users (username, password_hash, pin_hash) VALUES ($1, $2, $3)",
+        [OWNER_USERNAME, hashedPassword, hashedPin]
+      );
+
+      user = { username: OWNER_USERNAME, password_hash: hashedPassword, pin_hash: hashedPin };
+    }
+
+    const pinMatch = pin ? await bcrypt.compare(pin, user.pin_hash) : false;
+    const passwordMatch = password ? await bcrypt.compare(password, user.password_hash) : false;
+
+    if (!pinMatch && !passwordMatch) {
+      return res.status(401).json({ success: false, message: "Wrong credentials" });
+    }
+
+    return res.json({ success: true, username: OWNER_USERNAME, isOwner: true });
   }
+
+  // Alle anderen = gast
+  const guestId = `guest_${Date.now()}`;
+  const guestPin = Math.floor(1000 + Math.random() * 9000).toString();
+
+  await pool.query("INSERT INTO users (username, pin) VALUES ($1, $2)", [guestId, guestPin]);
+
+  res.json({ success: true, username: guestId, pin: guestPin, isGuest: true });
 });
 
 // --- Andere routes ---
@@ -95,12 +116,10 @@ app.post('/api/guest-login', async (req, res) => {
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
-
     res.status(status).json({ message });
     throw err;
   });
 
-  // Vite alleen in development
   if (process.env.NODE_ENV === "production") {
     serveStatic(app);
   } else {
@@ -109,14 +128,7 @@ app.post('/api/guest-login', async (req, res) => {
   }
 
   const port = parseInt(process.env.PORT || "5000", 10);
-  httpServer.listen(
-    {
-      port,
-      host: "0.0.0.0",
-      reusePort: true,
-    },
-    () => {
-      log(`serving on port ${port}`);
-    },
-  );
+  httpServer.listen({ port, host: "0.0.0.0", reusePort: true }, () => {
+    log(`serving on port ${port}`);
+  });
 })();
