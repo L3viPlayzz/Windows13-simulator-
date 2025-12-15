@@ -2,32 +2,19 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
-import { Pool } from "pg";
-import bcrypt from "bcrypt"; // als je nog niet hebt, npm i bcrypt
+import { Pool } from "pg"; // ← Postgres import
 
 const app = express();
 const httpServer = createServer(app);
 
+// Postgres pool
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
-declare module "http" {
-  interface IncomingMessage {
-    rawBody: unknown;
-  }
-}
-
-// --- Middleware ---
-app.use(
-  express.json({
-    verify: (req, _res, buf) => {
-      req.rawBody = buf;
-    },
-  }),
-);
-
+// Middleware voor JSON
+app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// --- Logging middleware ---
+// Logging
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
     hour: "numeric",
@@ -35,78 +22,45 @@ export function log(message: string, source = "express") {
     second: "2-digit",
     hour12: true,
   });
-
   console.log(`${formattedTime} [${source}] ${message}`);
 }
 
-app.use((req, res, next) => {
-  const start = Date.now();
-  const path = req.path;
-  let capturedJsonResponse: Record<string, any> | undefined = undefined;
+// --- Guest login route ---
+app.post('/api/guest-login', async (req, res) => {
+  try {
+    // Unieke guest ID
+    const guestId = `guest_${Date.now()}`;
+    const guestPin = Math.floor(1000 + Math.random() * 9000).toString();
 
-  const originalResJson = res.json;
-  res.json = function (bodyJson, ...args) {
-    capturedJsonResponse = bodyJson;
-    return originalResJson.apply(res, [bodyJson, ...args]);
-  };
+    // Opslaan in DB
+    await pool.query(
+      'INSERT INTO users (username, pin, isGuest, isOwner) VALUES ($1, $2, true, false)',
+      [guestId, guestPin]
+    );
 
-  res.on("finish", () => {
-    const duration = Date.now() - start;
-    if (path.startsWith("/api")) {
-      let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-      if (capturedJsonResponse) {
-        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
-      }
-      log(logLine);
-    }
-  });
-
-  next();
+    res.json({
+      success: true,
+      username: guestId,
+      pin: guestPin,
+      isGuest: true
+    });
+  } catch (err) {
+    console.error("Guest login error:", err);
+    res.status(500).json({ success: false, message: "Could not create guest" });
+  }
 });
 
-// --- Vaste gebruiker + gastaccounts ---
-const OWNER_USERNAME = "levi"; // jouw account
-const OWNER_PIN = "110911";    // jouw PIN
-const OWNER_PASSWORD = "Levi20111028!"; // jouw password (optioneel)
-
-app.post("/api/login", async (req, res) => {
-  const { username, password, pin } = req.body;
-
-  if (username === OWNER_USERNAME) {
-    // Jij logt normaal in
-    const result = await pool.query("SELECT * FROM users WHERE username = $1", [username]);
-    let user = result.rows[0];
-
-    if (!user) {
-      // Maak je account automatisch aan bij eerste keer
-      const hashedPassword = await bcrypt.hash(OWNER_PASSWORD, 10);
-      const hashedPin = await bcrypt.hash(OWNER_PIN, 10);
-
-      await pool.query(
-        "INSERT INTO users (username, password_hash, pin_hash) VALUES ($1, $2, $3)",
-        [OWNER_USERNAME, hashedPassword, hashedPin]
-      );
-
-      user = { username: OWNER_USERNAME, password_hash: hashedPassword, pin_hash: hashedPin };
+// --- Auth check middleware ---
+app.use(async (req: Request & { user?: any }, res, next) => {
+  // Simpele voorbeeld: in productie gebruik je sessions of JWT
+  const username = req.headers['x-username'] as string;
+  if (username) {
+    const result = await pool.query('SELECT * FROM users WHERE username=$1', [username]);
+    if (result.rows.length) {
+      req.user = result.rows[0];
     }
-
-    const pinMatch = pin ? await bcrypt.compare(pin, user.pin_hash) : false;
-    const passwordMatch = password ? await bcrypt.compare(password, user.password_hash) : false;
-
-    if (!pinMatch && !passwordMatch) {
-      return res.status(401).json({ success: false, message: "Wrong credentials" });
-    }
-
-    return res.json({ success: true, username: OWNER_USERNAME, isOwner: true });
   }
-
-  // Alle anderen = gast
-  const guestId = `guest_${Date.now()}`;
-  const guestPin = Math.floor(1000 + Math.random() * 9000).toString();
-
-  await pool.query("INSERT INTO users (username, pin) VALUES ($1, $2)", [guestId, guestPin]);
-
-  res.json({ success: true, username: guestId, pin: guestPin, isGuest: true });
+  next();
 });
 
 // --- Andere routes ---
