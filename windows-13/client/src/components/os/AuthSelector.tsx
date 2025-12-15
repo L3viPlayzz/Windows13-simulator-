@@ -1,28 +1,21 @@
-import { useState } from 'react';
-import { motion } from 'framer-motion';
-import { Lock, KeyRound, User } from 'lucide-react';
-import { PinLock } from './PinLock';
-import { PasswordLock } from './PasswordLock';
-import { WindowsHello } from './WindowsHello';
-
-interface AuthSelectorProps {
-  onUnlock: () => void;
-  isOwner: boolean; // true = jouw account
-}
-
 export function AuthSelector({ onUnlock, isOwner }: AuthSelectorProps) {
   const [selectedAuth, setSelectedAuth] = useState<'choose' | 'pin' | 'password' | 'hello' | 'guest'>('choose');
 
   if (!isOwner) {
-    // Voor gasten: enkel Guest login
     if (selectedAuth === 'guest') {
-      // eventueel nog een PIN prompt voor guest, of gewoon unlock
       onUnlock();
       return null;
     }
 
     return (
-      <div className="h-screen w-screen flex items-center justify-center">
+      <div className="h-screen w-screen flex flex-col items-center justify-center gap-8">
+        {/* Logo */}
+        <img
+          src="/logo.png"
+          alt="Logo"
+          className="w-24 h-24 object-contain rounded-lg"
+        />
+
         <motion.button
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
@@ -41,14 +34,20 @@ export function AuthSelector({ onUnlock, isOwner }: AuthSelectorProps) {
     );
   }
 
-  // --- Voor eigenaar: jouw normale opties ---
+  // --- Voor eigenaar: normale opties ---
   if (selectedAuth === 'pin') return <PinLock onUnlock={onUnlock} correctPin="110911" />;
   if (selectedAuth === 'password') return <PasswordLock onUnlock={onUnlock} correctPassword="Levi20111028!" />;
   if (selectedAuth === 'hello') return <WindowsHello onUnlock={onUnlock} onBack={() => setSelectedAuth('choose')} />;
 
   return (
     <div className="h-screen w-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex flex-col items-center justify-center relative overflow-hidden">
-      {/* Je bestaande animated achtergrond en content blijft hier */}
+      {/* Logo */}
+      <img
+        src="/logo.png"
+        alt="Logo"
+        className="w-24 h-24 object-contain rounded-lg mb-8"
+      />
+
       <div className="relative z-10 flex flex-col items-center justify-center gap-12">
         {/* Header */}
         <motion.div
@@ -63,7 +62,7 @@ export function AuthSelector({ onUnlock, isOwner }: AuthSelectorProps) {
 
         {/* Authentication Options */}
         <div className="flex flex-wrap gap-6 justify-center max-w-2xl">
-          {/* Windows Hello Option */}
+          {/* Windows Hello */}
           <motion.button
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
@@ -82,7 +81,7 @@ export function AuthSelector({ onUnlock, isOwner }: AuthSelectorProps) {
             </div>
           </motion.button>
 
-          {/* PIN Code Option */}
+          {/* PIN */}
           <motion.button
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
@@ -101,7 +100,7 @@ export function AuthSelector({ onUnlock, isOwner }: AuthSelectorProps) {
             </div>
           </motion.button>
 
-          {/* Password Option */}
+          {/* Password */}
           <motion.button
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
