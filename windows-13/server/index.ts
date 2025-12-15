@@ -2,9 +2,13 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
+import { Pool } from "pg"; // ← Postgres import
 
 const app = express();
 const httpServer = createServer(app);
+
+// Maak een Postgres pool aan
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
 declare module "http" {
   interface IncomingMessage {
@@ -12,6 +16,7 @@ declare module "http" {
   }
 }
 
+// --- Middleware ---
 app.use(
   express.json({
     verify: (req, _res, buf) => {
@@ -22,6 +27,7 @@ app.use(
 
 app.use(express.urlencoded({ extended: false }));
 
+// --- Logging middleware ---
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
     hour: "numeric",
@@ -59,6 +65,30 @@ app.use((req, res, next) => {
   next();
 });
 
+// --- Guest login route ---
+app.post('/api/guest-login', async (req, res) => {
+  try {
+    const guestId = `guest_${Date.now()}`;
+    const guestPin = Math.floor(1000 + Math.random() * 9000).toString();
+
+    await pool.query(
+      'INSERT INTO users (username, pin) VALUES ($1, $2)',
+      [guestId, guestPin]
+    );
+
+    res.json({
+      success: true,
+      username: guestId,
+      pin: guestPin,
+      isGuest: true
+    });
+  } catch (err) {
+    console.error("Guest login error:", err);
+    res.status(500).json({ success: false, message: "Could not create guest" });
+  }
+});
+
+// --- Andere routes ---
 (async () => {
   await registerRoutes(httpServer, app);
 
@@ -70,9 +100,7 @@ app.use((req, res, next) => {
     throw err;
   });
 
-  // importantly only setup vite in development and after
-  // setting up all the other routes so the catch-all route
-  // doesn't interfere with the other routes
+  // Vite alleen in development
   if (process.env.NODE_ENV === "production") {
     serveStatic(app);
   } else {
@@ -80,10 +108,6 @@ app.use((req, res, next) => {
     await setupVite(httpServer, app);
   }
 
-  // ALWAYS serve the app on the port specified in the environment variable PORT
-  // Other ports are firewalled. Default to 5000 if not specified.
-  // this serves both the API and the client.
-  // It is the only port that is not firewalled.
   const port = parseInt(process.env.PORT || "5000", 10);
   httpServer.listen(
     {
